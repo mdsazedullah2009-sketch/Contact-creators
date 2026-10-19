@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Contacts Export (CSV &amp; VCF)</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #fff;
+      --text: #1b1f24;
+      --muted: #6a727c;
+      --line: #e2e5e9;
+      --accent: #2563eb;
+      --accent-text: #fff;
+      --ok: #15803d;
+      --warn: #b45309;
+      --danger: #b91c1c;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg: #0f1318;
+        --card: #181e26;
+        --text: #e8ebef;
+        --muted: #98a2ae;
+        --line: #2a323d;
+        --accent: #4f8cff;
+        --accent-text: #0b1220;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --danger: #f87171;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    html,
+    body {
+      margin: 0
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.45 system-ui, -apple-system, "Noto Sans Bengali", "Noto Sans", Roboto, sans-serif;
+      padding: 12px 12px 30px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      margin: 6px 4px 12px
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px
+    }
+
+    .card h2 {
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin: 0 0 10px
+    }
+
+    button,
+    .btn {
+      font: inherit;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      padding: 11px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-align: center
+    }
+
+    button.primary,
+    .btn.primary {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent)
+    }
+
+    button.small {
+      padding: 6px 10px;
+      font-size: .85rem
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    .row>* {
+      flex: 1 1 140px
+    }
+
+    input[type=text],
+    input[type=tel],
+    input[type=search] {
+      width: 100%;
+      font: inherit;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    label.chk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0
+    }
+
+    input[type=checkbox] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+      flex: none;
+      margin-top: 2px
+    }
+
+    .note {
+      font-size: .85rem;
+      color: var(--muted);
+      margin: 8px 0 0
+    }
+
+    .status {
+      font-size: .9rem;
+      margin-top: 10px
+    }
+
+    .status.ok {
+      color: var(--ok)
+    }
+
+    .status.warn {
+      color: var(--warn)
+    }
+
+    .status.err {
+      color: var(--danger)
+    }
+
+    .list {
+      max-height: 55vh;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin-top: 10px
+    }
+
+    .item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line)
+    }
+
+    .item:last-child {
+      border-bottom: 0
+    }
+
+    .item .info {
+      min-width: 0;
+      flex: 1
+    }
+
+    .item .nm {
+      font-weight: 600;
+      overflow-wrap: anywhere
+    }
+
+    .item .dt {
+      font-size: .85rem;
+      color: var(--muted);
+      overflow-wrap: anywhere
+    }
+
+    .item .edit {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .item .edit small {
+      color: var(--muted);
+      font-size: .75rem
+    }
+
+    .item.edited .nm::after {
+      content: " ✎";
+      color: var(--accent);
+      font-weight: 400
+    }
+
+    .count {
+      font-size: .9rem;
+      color: var(--muted);
+      margin: 10px 0 0
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      resize: vertical
+    }
+
+    .hidden {
+      display: none !important
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>📇 Contacts Export</h1>
+
+  <!-- 1. Load -->
+  <section class="card">
+    <h2>1 · Load contacts</h2>
+    <div class="row">
+      <button class="primary" id="btnPick">Pick from phone</button>
+      <label class="btn" for="vcfInput">Import .vcf file</label>
+      <input type="file" id="vcfInput" accept=".vcf,text/vcard,text/x-vcard" class="hidden">
+    </div>
+    <div class="status" id="loadStatus"></div>
+    <p class="note" id="compatNote"></p>
+  </section>
+
+  <!-- 2. Select / edit -->
+  <section class="card hidden" id="selectCard">
+    <h2>2 · Choose &amp; edit contacts</h2>
+    <input type="search" id="search" placeholder="Search name, phone or email…">
+    <div class="row" style="margin-top:8px">
+      <button id="btnAll">Select all shown</button>
+      <button id="btnNone">Clear shown</button>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="count" id="count"></div>
+    <p class="note">Tap <b>Edit</b> on a contact to change its name or phone number. Edits are used in the exported
+      files only; your phone’s contacts are not changed.</p>
+  </section>
+
+  <!-- 3. Options -->
+  <section class="card hidden" id="optCard">
+    <h2>3 · Fields &amp; file name</h2>
+    <label class="chk"><input type="checkbox" id="fName" checked> Name <span class="note" style="margin:0">(always
+        included in VCF)</span></label>
+    <label class="chk"><input type="checkbox" id="fTel" checked> Phone numbers</label>
+    <label class="chk"><input type="checkbox" id="fMail" checked> Email addresses</label>
+    <div style="margin-top:10px">
+      <input type="text" id="fileName" value="contacts" placeholder="File name" autocapitalize="off" autocomplete="off">
+      <p class="note">The extension (.csv or .vcf) is added automatically.</p>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="btnGenVcf">Create VCF</button>
+      <button class="primary" id="btnGenCsv">Create CSV</button>
+    </div>
+  </section>
+
+  <!-- 4. Output -->
+  <section class="card hidden" id="outCard">
+    <h2>4 · Your file</h2>
+    <div class="status ok" id="genStatus"></div>
+    <textarea id="preview" readonly></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="btnDownload">⬇ Download</button>
+      <button id="btnShare">Share / Save</button>
+      <button id="btnCopy">Copy text</button>
+    </div>
+    <p class="note">If Download does nothing in Acode’s built-in preview, use Share / Save or Copy text, or open this
+      page in Chrome.</p>
+  </section>
+
+  <script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  let contacts = [];   // {id,name,tels[],emails[],selected,editing,edited}
+  let out = {text:"", name:"", mime:"", bom:false};
+
+  /* ---------- helpers ---------- */
+  function setStatus(el, msg, cls){ el.textContent = msg || ""; el.className = "status " + (cls||""); }
+  function uniq(a){ return [...new Set(a.map(s => String(s).trim()).filter(Boolean))]; }
+  function parseTels(s){ return uniq(String(s).split(/[,;\n]+/)); }
+  function cleanName(s, ext){
+    s = (s||"").trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g,"_").replace(/\.(csv|vcf)$/i,"");
+    return (s || "contacts") + "." + ext;
+  }
+  function csvCell(v){
+    v = (v == null ? "" : String(v));
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+  }
+  function vEsc(v){
+    return String(v||"").replace(/\\/g,"\\\\").replace(/\r?\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
+  }
+  function splitName(n){
+    const p = n.trim().split(/\s+/);
+    if(p.length < 2) return ["", n.trim()];
+    const fam = p.pop();
+    return [fam, p.join(" ")];
+  }
+
+  /* ---------- compatibility ---------- */
+  const hasPicker = ("contacts" in navigator) && ("ContactsManager" in window);
+  $("compatNote").textContent = hasPicker
+    ? "Tip: your phone’s contact picker will open. Tick the contacts you want there (use “select all” in the picker for everyone)."
+    : "The Contact Picker isn’t available in this view. Open the page in Chrome for Android (Acode ▸ Preview in browser), or export contacts from your Contacts app as a .vcf file and import it here.";
+  if(!hasPicker) $("btnPick").disabled = true;
+
+  /* ---------- load: Contact Picker API ---------- */
+  $("btnPick").addEventListener("click", async () => {
+    try{
+      let props = ["name","tel","email"];
+      try{
+        const sup = await navigator.contacts.getProperties();
+        props = props.filter(p => sup.includes(p));
+      }catch(_){}
+      const res = await navigator.contacts.select(props, {multiple:true});
+      if(!res.length){ setStatus($("loadStatus"),"No contacts were chosen.","warn"); return; }
+      const list = res.map((c,i) => ({
+        id: "p"+i, name: uniq(c.name||[])[0] || "",
+        tels: uniq(c.tel||[]), emails: uniq(c.email||[]), selected: true
+      }));
+      setContacts(list, "Loaded " + list.length + " contact" + (list.length===1?"":"s") + " from your phone.");
+    }catch(e){
+      setStatus($("loadStatus"), "Couldn’t open the picker: " + (e && e.message ? e.message : e), "err");
+    }
+  });
+
+  /* ---------- load: vCard import ---------- */
+  function decodeQP(s){
+    return s.replace(/=\r?\n/g,"").replace(/=([0-9A-F]{2})/gi,(m,h)=>String.fromCharCode(parseInt(h,16)));
+  }
+  function parseVcf(text){
+    text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/\n[ \t]/g,"");
+    const res = [];
+    text.split(/BEGIN:VCARD/i).slice(1).forEach((card,i) => {
+      let fn="", n="", tels=[], emails=[];
+      card.split("\n").forEach(line => {
+        const idx = line.indexOf(":");
+        if(idx < 0) return;
+        const head = line.slice(0,idx), val0 = line.slice(idx+1);
+        const key = head.split(";")[0].toUpperCase().replace(/^.*\./,"");
+        let val = val0;
+        if(/ENCODING=QUOTED-PRINTABLE/i.test(head)){
+          try{ val = decodeURIComponent(escape(decodeQP(val0))); }catch(_){ val = decodeQP(val0); }
+        }
+        val = val.replace(/\\n/gi," ").replace(/\\,/g,",").replace(/\\;/g,";").replace(/\\\\/g,"\\").trim();
+        if(key==="FN") fn = val;
+        else if(key==="N" && !n){ const p = val0.split(";"); n = [p[3],p[1],p[2],p[0],p[4]].filter(Boolean).join(" ").trim(); }
+        else if(key==="TEL") tels.push(val);
+        else if(key==="EMAIL") emails.push(val);
+      });
+      const name = fn || n;
+      if(name || tels.length || emails.length){
+        res.push({id:"v"+i, name, tels:uniq(tels), emails:uniq(emails), selected:true});
+      }
+    });
+    return res;
+  }
+  $("vcfInput").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const list = parseVcf(String(r.result));
+      if(!list.length){ setStatus($("loadStatus"),"No contacts found in that file.","warn"); return; }
+      setContacts(list, "Imported " + list.length + " contact" + (list.length===1?"":"s") + " from " + f.name + ".");
+    };
+    r.onerror = () => setStatus($("loadStatus"),"Couldn’t read that file.","err");
+    r.readAsText(f);
+    e.target.value = "";
+  });
+
+  function setContacts(list, msg){
+    list.sort((a,b) => (a.name||"~").localeCompare(b.name||"~"));
+    contacts = list;
+    setStatus($("loadStatus"), msg, "ok");
+    ["selectCard","optCard"].forEach(id => $(id).classList.remove("hidden"));
+    $("outCard").classList.add("hidden");
+    $("search").value = "";
+    render();
+  }
+
+  /* ---------- list with inline editing ---------- */
+  function visible(){
+    const q = $("search").value.trim().toLowerCase();
+    if(!q) return contacts;
+    return contacts.filter(c =>
+      c.editing ||
+      (c.name||"").toLowerCase().includes(q) ||
+      c.tels.some(t => t.toLowerCase().includes(q)) ||
+      c.emails.some(m => m.toLowerCase().includes(q)));
+  }
+  function render(){
+    const box = $("list");
+    const shown = visible();
+    box.textContent = "";
+    if(!shown.length){
+      const d = document.createElement("div");
+      d.className = "item"; d.textContent = "No matches.";
+      box.appendChild(d);
+    }
+    const frag = document.createDocumentFragment();
+    shown.forEach(c => {
+      const row = document.createElement("div");
+      row.className = "item" + (c.edited ? " edited" : "");
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = c.selected;
+      cb.addEventListener("change", () => { c.selected = cb.checked; updateCount(); });
+
+      const info = document.createElement("div");
+      info.className = "info";
+
+      if(c.editing){
+        const wrap = document.createElement("div");
+        wrap.className = "edit";
+        const l1 = document.createElement("small"); l1.textContent = "Name";
+        const inName = document.createElement("input");
+        inName.type = "text"; inName.value = c.name; inName.placeholder = "Name";
+        inName.addEventListener("input", () => { c.name = inName.value; c.edited = true; });
+        const l2 = document.createElement("small"); l2.textContent = "Phone number(s) — separate with commas";
+        const inTel = document.createElement("input");
+        inTel.type = "tel"; inTel.value = c.tels.join(", "); inTel.placeholder = "+8801XXXXXXXXX";
+        inTel.addEventListener("input", () => { c.tels = parseTels(inTel.value); c.edited = true; });
+        wrap.append(l1, inName, l2, inTel);
+        if(c.emails.length){
+          const em = document.createElement("small");
+          em.textContent = "Email: " + c.emails.join(", ");
+          wrap.appendChild(em);
+        }
+        info.appendChild(wrap);
+      }else{
+        const nm = document.createElement("div");
+        nm.className = "nm"; nm.textContent = c.name || "(No name)";
+        const dt = document.createElement("div");
+        dt.className = "dt";
+        dt.textContent = [c.tels.join(", "), c.emails.join(", ")].filter(Boolean).join(" · ") || "—";
+        info.append(nm, dt);
+        info.addEventListener("click", () => { c.selected = !c.selected; cb.checked = c.selected; updateCount(); });
+      }
+
+      const btn = document.createElement("button");
+      btn.className = "small";
+      btn.textContent = c.editing ? "Done" : "Edit";
+      btn.addEventListener("click", () => { c.editing = !c.editing; render(); });
+
+      row.append(cb, info, btn);
+      frag.appendChild(row);
+    });
+    box.appendChild(frag);
+    updateCount();
+  }
+  function updateCount(){
+    const n = contacts.filter(c => c.selected).length;
+    $("count").textContent = n + " of " + contacts.length + " selected";
+    $("btnGenCsv").disabled = $("btnGenVcf").disabled = n === 0;
+  }
+  $("search").addEventListener("input", render);
+  $("btnAll").addEventListener("click", () => { visible().forEach(c => c.selected = true); render(); });
+  $("btnNone").addEventListener("click", () => { visible().forEach(c => c.selected = false); render(); });
+
+  /* ---------- generators ---------- */
+  function finish(text, ext, mime, bom, count){
+    out = {text, name: cleanName($("fileName").value, ext), mime, bom};
+    $("preview").value = text;
+    setStatus($("genStatus"), "✔ " + out.name + " is ready (" + count + " contact" + (count===1?"":"s") + ").", "ok");
+    $("btnShare").classList.toggle("hidden", !(navigator.share && navigator.canShare));
+    $("outCard").classList.remove("hidden");
+    $("outCard").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  $("btnGenCsv").addEventListener("click", () => {
+    const useName = $("fName").checked, useTel = $("fTel").checked, useMail = $("fMail").checked;
+    const chosen = contacts.filter(c => c.selected);
+    if(!chosen.length) return;
+    if(!useName && !useTel && !useMail){
+      setStatus($("genStatus"),"Pick at least one field.","err");
+      $("outCard").classList.remove("hidden");
+      return;
+    }
+    const header = [];
+    if(useName) header.push("Name");
+    if(useTel) header.push("Phone");
+    if(useMail) header.push("Email");
+    const rows = [header.map(csvCell).join(",")];
+    chosen.forEach(c => {
+      const r = [];
+      if(useName) r.push(c.name);
+      if(useTel) r.push(c.tels.join("; "));
+      if(useMail) r.push(c.emails.join("; "));
+      rows.push(r.map(csvCell).join(","));
+    });
+    finish(rows.join("\r\n") + "\r\n", "csv", "text/csv", true, chosen.length);
+  });
+
+  $("btnGenVcf").addEventListener("click", () => {
+    const useTel = $("fTel").checked, useMail = $("fMail").checked;
+    const chosen = contacts.filter(c => c.selected);
+    if(!chosen.length) return;
+    const lines = [];
+    chosen.forEach(c => {
+      const tels = useTel ? c.tels : [];
+      const mails = useMail ? c.emails : [];
+      const display = c.name.trim() || tels[0] || mails[0] || c.tels[0] || "(No name)";
+      const nm = c.name.trim();
+      lines.push("BEGIN:VCARD", "VERSION:3.0");
+      lines.push("FN:" + vEsc(display));
+      if(nm){
+        const [fam, giv] = splitName(nm);
+        lines.push("N:" + vEsc(fam) + ";" + vEsc(giv) + ";;;");
+      }else{
+        lines.push("N:;" + vEsc(display) + ";;;");
+      }
+      tels.forEach(t => lines.push("TEL;TYPE=CELL:" + t.replace(/[\r\n]+/g," ")));
+      mails.forEach(m => lines.push("EMAIL;TYPE=INTERNET:" + m.replace(/[\r\n]+/g," ")));
+      lines.push("END:VCARD");
+    });
+    finish(lines.join("\r\n") + "\r\n", "vcf", "text/vcard", false, chosen.length);
+  });
+
+  /* ---------- output actions ---------- */
+  function makeBlob(){
+    const parts = out.bom ? ["\uFEFF", out.text] : [out.text];
+    return new Blob(parts, {type: out.mime + ";charset=utf-8"});
+  }
+  $("btnDownload").addEventListener("click", () => {
+    if(!out.text) return;
+    try{
+      const url = URL.createObjectURL(makeBlob());
+      const a = document.createElement("a");
+      a.href = url; a.download = out.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setStatus($("genStatus"), "Download started: " + out.name + " (check your Downloads folder).", "ok");
+    }catch(e){
+      setStatus($("genStatus"), "Download failed here. Try Share / Save or Copy text.", "err");
+    }
+  });
+  $("btnShare").addEventListener("click", async () => {
+    try{
+      const file = new File([makeBlob()], out.name, {type: out.mime});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title: out.name});
+      }else{
+        setStatus($("genStatus"), "Sharing files isn’t supported here.", "warn");
+      }
+    }catch(e){
+      if(e && e.name !== "AbortError") setStatus($("genStatus"), "Share failed: " + e.message, "err");
+    }
+  });
+  $("btnCopy").addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(out.text);
+      setStatus($("genStatus"), "Copied to clipboard.", "ok");
+    }catch(_){
+      const t = $("preview"); t.removeAttribute("readonly"); t.select();
+      try{ document.execCommand("copy"); setStatus($("genStatus"),"Copied to clipboard.","ok"); }
+      catch(__){ setStatus($("genStatus"),"Couldn’t copy. Long-press the text to copy it manually.","err"); }
+      t.setAttribute("readonly","");
+    }
+  });
+})();
+</script>
+</body>
+
+      </html>
